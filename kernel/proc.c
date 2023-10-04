@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "pstat.h"
 
 struct cpu cpus[NCPU];
 
@@ -119,6 +120,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->cputime = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -653,4 +655,63 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int wait2(uint64 addr, uint64 rusage)
+{
+    struct rusage ru;
+    struct proc *cp;
+    struct proc *p = myproc();
+    int kids;
+    int pid;
+
+    acquire(&wait_lock);
+
+    for (;;) {
+        // look for exited children.
+        kids = 0;
+        for (cp = proc; cp < &proc[NPROC]; cp++) {
+            if (cp->parent == p) {
+                acquire(&cp->lock);
+                kids = 1;
+                if (cp->state == ZOMBIE) {
+                    
+                    ru.cputime = cp->cputime; 
+                    copyout(p->pagetable, rusage, (char *)&ru, sizeof(ru));
+                    // Found one.
+                    pid = cp->pid;
+                    
+                    ru.cputime = cp->cputime;
+                    if (addr != 0 && copyout(p->pagetable, addr, (char *)&cp->xstate, sizeof(cp->xstate))<0){
+                       release(&cp->lock);
+                       release(&wait_lock);
+                       return -1;
+                    }
+                    
+                    if (rusage != 0 && copyout(p->pagetable, rusage, (char *)&ru, sizeof(ru))<0){
+                       release(&cp->lock);
+                       release(&wait_lock);
+                       return -1;
+                    }
+                    
+                    freeproc(cp);
+                    release(&cp->lock);
+                    release(&wait_lock);
+                    return pid;
+
+                }
+                release(&cp->lock);
+
+            }
+        }
+
+        // No point waiting if we don't have any children.
+        if (!kids || p->killed) {
+            release(&wait_lock);
+            return -1;
+        }
+
+        // Wait for a child to exit.
+        sleep(p, &wait_lock);
+    }
 }
