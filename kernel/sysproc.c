@@ -107,3 +107,22 @@ sys_getprocs(void)
     return -1;
   return(procinfo(addr));
 }
+
+uint64
+sys_setpriority(void)
+{
+  int newpriority;
+  if (argint(0, &newpriority) < 0) {
+    return -1; 
+  }
+
+  myproc()->priority = newpriority;
+  return 0;
+} 
+
+uint64 
+sys_getpriority(void)
+{
+  return myproc()->priority;
+}
+
