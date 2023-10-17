@@ -83,6 +83,9 @@ struct trapframe {
 // Per-process state
 struct proc {
   struct spinlock lock;
+  
+  int priority;
+  uint64 readytime;
 
   // p->lock must be held when using these:
   enum procstate state;        // Process state
