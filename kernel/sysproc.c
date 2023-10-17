@@ -96,6 +96,7 @@ sys_uptime(void)
   return xticks;
 }
 
+<<<<<<< HEAD
 // return the number of active processes in the system
 // fill in user-provided data structure with pid,state,sz,ppid,name
 uint64
@@ -126,3 +127,14 @@ sys_getpriority(void)
   return myproc()->priority;
 }
 
+=======
+uint64
+sys_wait2(void)
+{
+  uint64 p1, p2;    
+  if(argaddr(0, &p1) < 0 || argaddr(1, &p2)<0){
+    return -1;
+  }      
+  return wait2(p1,p2);
+}
+>>>>>>> hw2.2
