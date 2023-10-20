@@ -36,8 +36,6 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
-<<<<<<< HEAD
 entry("getprocs");
-=======
 entry("wait2");
->>>>>>> hw2.2
+entry("setpriority");

@@ -20,13 +20,8 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
-<<<<<<< HEAD
 #define SYS_getprocs  22
 #define SYS_getpriority 23
 #define SYS_setpriority 24
+#define SYS_wait2  25
 
-
-
-=======
-#define SYS_wait2  22
->>>>>>> hw2.2

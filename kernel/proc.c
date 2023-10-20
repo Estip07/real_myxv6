@@ -6,7 +6,7 @@
 #include "proc.h"
 #include "pstat.h"
 #include "defs.h"
-#include "pstat.h"
+
 
 struct cpu cpus[NCPU];
 
@@ -246,6 +246,7 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  p->readytime = sys_uptime();
 
   release(&p->lock);
 }
@@ -316,6 +317,7 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  p->readytime = sys_uptime();
   release(&np->lock);
 
   return pid;
@@ -445,25 +447,76 @@ scheduler(void)
   
   c->proc = 0;
   for(;;){
-    // Avoid deadlock by ensuring that devices can interrupt.
-    intr_on();
+  
+    if (SCHED_POLICY == SCHED_RR){
+      // Avoid deadlock by ensuring that devices can interrupt.
+      intr_on();
 
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+      for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        if(p->state == RUNNABLE) {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
       }
-      release(&p->lock);
+    //If it is not Round Robin, its priority-based
+    }else{
+      // Priority-based scheduling with aging
+      intr_on();
+      for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->state == RUNNABLE) {
+          // Age the process based on time in RUNNABLE state
+          int age = sys_uptime() - p->readytime;
+          p->priority += age;
+        }
+        release(&p->lock);
+      }
+      
+       int high_prio = -1;
+       struct proc *selected = 0;
+       // Find the highest priority among all processes
+       for(p = proc; p < &proc[NPROC]; p++){
+         if(p->priority > high_prio){
+           high_prio = p->priority;
+         }
+       }
+       intr_on();
+       for(p = proc; p < &proc[NPROC]; p++){
+         acquire(&p->lock);
+         if(p->state == RUNNABLE && p->priority == high_prio){
+           p->state = RUNNING;
+           c->proc = p;
+           swtch(&c->context, &p-> context);
+           c->proc = 0;
+         }
+         release(&p->lock);
+       }
+       
+        if (selected) {
+        acquire(&selected->lock);
+          if (selected->state == RUNNABLE) {
+            selected->readytime = sys_uptime();
+            selected->state = RUNNING;
+            c->proc = selected;
+            swtch(&c->context, &selected->context);
+            c->proc = 0;
+            release(&selected->lock);
+          } else {
+            release(&selected->lock);
+          }
+        }
     }
+
   }
 }
 
@@ -501,6 +554,7 @@ yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
+  p->readytime = sys_uptime();
   sched();
   release(&p->lock);
 }
@@ -569,6 +623,7 @@ wakeup(void *chan)
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
+        p->readytime = sys_uptime();
       }
       release(&p->lock);
     }
@@ -590,6 +645,7 @@ kill(int pid)
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
+        p->readytime = sys_uptime();
       }
       release(&p->lock);
       return 0;
@@ -658,7 +714,7 @@ procdump(void)
   }
 }
 
-<<<<<<< HEAD
+
 // Fill in user-provided array with info for current processes
 // Return the number of processes found
 int
@@ -675,6 +731,8 @@ procinfo(uint64 addr)
     procinfo.pid = p->pid;
     procinfo.state = p->state;
     procinfo.size = p->sz;
+    procinfo.priority = p->priority;
+    procinfo.readytime = p->readytime;
     if (p->parent)
       procinfo.ppid = (p->parent)->pid;
     else
@@ -686,7 +744,8 @@ procinfo(uint64 addr)
     addr += sizeof(procinfo);
   }
   return nprocs;
-=======
+}
+
 int wait2(uint64 addr, uint64 rusage)
 {
     struct rusage ru;
@@ -744,5 +803,5 @@ int wait2(uint64 addr, uint64 rusage)
         // Wait for a child to exit.
         sleep(p, &wait_lock);
     }
->>>>>>> hw2.2
+
 }

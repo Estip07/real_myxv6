@@ -86,6 +86,7 @@ struct proc {
   
   int priority;
   uint64 readytime;
+  int age;
 
   // p->lock must be held when using these:
   enum procstate state;        // Process state
