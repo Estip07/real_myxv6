@@ -43,13 +43,19 @@ sys_sbrk(void)
 {
   int addr;
   int n;
-
-  if(argint(0, &n) < 0)
+  int sz2;
+  struct proc *p = myproc();
+  if(argint(0, &n) < 0){
     return -1;
-  addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
-  return addr;
+  }
+  addr = p->sz;
+  sz2 = addr + n;
+  if(sz2 < TRAPFRAME){
+    p->sz = sz2;
+    return addr;
+  }
+  return -1;
+  
 }
 
 uint64
@@ -107,3 +113,13 @@ sys_getprocs(void)
     return -1;
   return(procinfo(addr));
 }
+
+uint64
+sys_freepmem(void)
+{
+   int freep = freepmem_kalloc();
+   return freep;
+}
+
+
+
