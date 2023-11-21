@@ -26,6 +26,9 @@ int sleep(int);
 int uptime(void);
 int getprocs(struct pstat*);
 uint64 freepmem(void);
+void* mmap(void*, int, int, int, int, void*);
+int munmap(void*, int);
+
 
 // ulib.c
 int stat(const char*, struct stat*);
