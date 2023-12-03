@@ -508,16 +508,13 @@ uint64 start_addr;
 /* Add error checking for length, prot, and flags arguments */
 
 if (argaddr(1, &length) < 0)
-
-return -1;
+  return -1;
 
 if (argint(2, &prot) < 0)
-
-return -1;
+  return -1;
 
 if (argint(3, &flags) <0)
-
-return -1;
+  return -1;
 
 // Search p->mmr[] for unused location
 
@@ -624,7 +621,6 @@ return -1;
 mmr->valid = 0;
 
 if (mmr->flags & MAP_PRIVATE)
-
 dofree = 1;
 
 else { // MAP_SHARED

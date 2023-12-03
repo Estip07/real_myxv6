@@ -5,6 +5,8 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "stat.h"
+
 
 struct spinlock tickslock;
 uint ticks;
@@ -51,7 +53,6 @@ usertrap(void)
   
   if(r_scause() == 8){
     // system call
-
     if(p->killed)
       exit(-1);
 
@@ -67,23 +68,48 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   }else if(r_scause() == 13 || r_scause() == 15){
-      if(r_stval() < p->sz){
+      if(r_stval() >= p->sz){
+        
+        for(int i = 0; i < MAX_MMR; i++){
+          if(p->mmr[i].valid && p->mmr[i].addr < r_stval() && p->mmr[i].addr+p->mmr[i].length > r_stval()){
+            
+            //check if it allows read access
+            if(r_scause() == 13){
+              if((p->mmr[i].prot & PROT_READ) == 0){
+                p->killed = 1;
+                exit(-1);
+              }
+            }
+            if(r_scause() == 15){
+            //check if it allows write access
+              if((p->mmr[i].prot & PROT_WRITE) == 0){
+                p->killed = 1;
+                exit(-1);
+              }
+            }
+            
+          }
+        }
+        
+      	  
         char *mem = kalloc();
         if(mem == 0){
           p->killed = 1;
           exit(-1);
         }else{
-          memset((void*)mem,0,PGSIZE);
+          
+          
           mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE,(uint64)mem,(PTE_R | PTE_W | PTE_X | PTE_U ));
         }
-      }else{
-         p->killed = 1;
       }
   
   } else {
+    
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
+    exit(-1);
+    
   }
 
   if(p->killed)
