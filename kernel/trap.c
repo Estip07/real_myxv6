@@ -77,14 +77,14 @@ usertrap(void)
             
             //check if it allows read access
             if(r_scause() == 13){
-              if((p->mmr[i].prot & PROT_READ) == 0){
+              if((p->mmr[i].prot & PTE_R) == 0){
                 p->killed = 1;
                 exit(-1);
               }
             }
             if(r_scause() == 15){
             //check if it allows write access
-              if((p->mmr[i].prot & PROT_WRITE) == 0){
+              if((p->mmr[i].prot & PTE_W) == 0){
                 p->killed = 1;
                 exit(-1);
               }
@@ -92,6 +92,8 @@ usertrap(void)
             
           }
         }
+        }
+        
         
       	  
         void *mem = kalloc();
@@ -108,7 +110,7 @@ usertrap(void)
         }else{
         	printf("no mem");
         }
-      }
+      
   
   } else {
     
