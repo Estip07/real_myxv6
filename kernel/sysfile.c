@@ -488,21 +488,14 @@ sys_pipe(void)
 // Create a new mapped memory region
 
 uint64
-
 sys_mmap()
-
 {
 
 uint64 length;
-
 int prot;
-
 int flags;
-
 struct proc *p = myproc();
-
 struct mmr *newmmr = 0;
-
 uint64 start_addr;
 
 /* Add error checking for length, prot, and flags arguments */
@@ -519,14 +512,10 @@ if (argint(3, &flags) <0)
 // Search p->mmr[] for unused location
 
 for (int i = 0; i < MAX_MMR; i++) {
-
-if (p->mmr[i].valid == 0) {
-
-newmmr = &(p->mmr[i]);
-
-break;
-
-}
+  if (p->mmr[i].valid == 0) {
+    newmmr = &(p->mmr[i]);
+    break;
+  }
 
 }
 
@@ -565,11 +554,9 @@ return -1;
 }
 
 if (flags & MAP_SHARED) // start an mmr_list if region is shared
-
 newmmr->mmr_family.listid = alloc_mmr_listid();
 
 p->cur_max = start_addr;
-
 return start_addr;
 
 } else {
@@ -600,30 +587,25 @@ int i;
 
 // Search proc->mmr for addr
 
-for (i = 0; i < MAX_MMR; i++)
+for (i = 0; i < MAX_MMR; i++){
 
-if ((p->mmr[i].valid == 1) && (addr == p->mmr[i].addr) &&
+if ((p->mmr[i].valid == 1) && (addr == p->mmr[i].addr) && (PGROUNDUP(length) == p->mmr[i].length)) {
+  mmr = &(p->mmr[i]);
+  break;
 
-(PGROUNDUP(length) == p->mmr[i].length)) {
-
-mmr = &(p->mmr[i]);
-
-break;
-
+  }
 }
 
 if (!mmr) {
-
 return -1;
 
 }
 
 mmr->valid = 0;
 
-if (mmr->flags & MAP_PRIVATE)
+if (mmr->flags & MAP_PRIVATE){
 dofree = 1;
-
-else { // MAP_SHARED
+}else { // MAP_SHARED
 
 struct mmr_list *pmmrlist = get_mmr_list(mmr->mmr_family.listid);
 
@@ -682,5 +664,5 @@ if(argaddr(0, &addr) < 0)
 if(argaddr(1, &length) < 0)
   return -1;
 
-return 0;
+return munmap(addr, length);
 } 

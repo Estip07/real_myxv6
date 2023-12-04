@@ -68,9 +68,11 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   }else if(r_scause() == 13 || r_scause() == 15){
+      
       if(r_stval() >= p->sz){
         
         for(int i = 0; i < MAX_MMR; i++){
+          
           if(p->mmr[i].valid && p->mmr[i].addr < r_stval() && p->mmr[i].addr+p->mmr[i].length > r_stval()){
             
             //check if it allows read access
@@ -92,14 +94,19 @@ usertrap(void)
         }
         
       	  
-        char *mem = kalloc();
-        if(mem == 0){
-          p->killed = 1;
-          exit(-1);
+        void *mem = kalloc();
+        if(mem){
+  
+          
+          //memset((void*)mem,0,PGSIZE);
+          if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE,(uint64)mem,(PTE_R | PTE_W | PTE_X | PTE_U ))< 0){
+            kfree(mem);
+            p->killed = 1;
+            exit(-1);
+          }
+          
         }else{
-          
-          
-          mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE,(uint64)mem,(PTE_R | PTE_W | PTE_X | PTE_U ));
+        	printf("no mem");
         }
       }
   
@@ -108,7 +115,7 @@ usertrap(void)
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
-    exit(-1);
+    
     
   }
 
@@ -121,7 +128,6 @@ usertrap(void)
 
   usertrapret();
 }
-
 
 //
 // return to user space
