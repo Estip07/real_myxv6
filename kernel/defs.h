@@ -9,6 +9,12 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+//Hw 6
+void seminit(void);
+int semalloc(void);
+void semdealloc(int index);
+
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);

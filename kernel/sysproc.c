@@ -7,6 +7,7 @@
 #include "spinlock.h"
 #include "proc.h"
 
+
 uint64
 sys_exit(void)
 {
@@ -120,6 +121,65 @@ sys_freepmem(void)
    int freep = freepmem_kalloc();
    return freep;
 }
+
+
+int
+sys_sem_destroy(void)
+{
+  int sem_addr;
+  uint64 s_val;
+  
+  if(argaddr(0, &s_val) < 0){
+    return -1;
+  }
+  
+  acquire(&semtable.lock);
+  if(copyin(myproc()->pagetable, (char*)&sem_addr, s_val, sizeof(int)) <= 0){
+    release(&semtable.lock);
+    return -1;
+  }
+  semdealloc(sem_addr);
+  release(&semtable.lock);
+  return 0;
+  
+ 
+}
+
+int
+sys_sem_wait(void)
+{
+  uint64 s_val;
+  int sem_addr;
+  if(copyin(myproc()->pagetable, (char*)&sem_addr, s_val, sizeof(int)) <= 0 || argaddr(0, &s_val) < 0)
+    return -1;
+  acquire(&semtable.sem[sem_addr].lock);
+  
+  while(semtable.sem[sem_addr].count == 0)
+  {
+     sleep((void*)&semtable.sem[sem_addr], &semtable.sem[sem_addr].lock);
+  }
+  semtable.sem[sem_addr].count = (semtable.sem[sem_addr].count - 1);
+  release(&semtable.sem[sem_addr].lock);
+  return 0;
+}
+
+int
+sys_sem_post(void)
+{
+  uint64 s_val;
+  int sem_addr;
+  
+  if(copyin(myproc()->pagetable, (char*)&sem_addr, s_val, sizeof(int)) <= 0 || argaddr(0,&s_val) < 0)
+    return -1;
+  acquire(&semtable.sem[sem_addr].lock);
+  semtable.sem[sem_addr].count = (semtable.sem[sem_addr].count + 1);
+  wakeup((void*)&semtable.sem[sem_addr]);
+  release(&semtable.sem[sem_addr].lock);
+  
+  return 0;
+
+}
+
 
 
 
